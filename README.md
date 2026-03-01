@@ -1,12 +1,30 @@
 # OpenClaw + n8n + Tailscale on Railway
 
-Deploy [OpenClaw](https://github.com/openclaw/openclaw) and [n8n](https://n8n.io) to Railway with secure Tailscale mesh networking, built-in observability, and 4-platform compute routing. One click to deploy, zero SSH required.
+Deploy [OpenClaw](https://github.com/openclaw/openclaw) and [n8n](https://n8n.io) to Railway with secure Tailscale mesh networking, built-in observability, and 4-platform compute routing. 
+"90%+ LLM cost savings"
+
+One click to deploy, zero SSH required.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/cDVYRI)
 
+![Railway Deploy](https://img.shields.io/badge/Deploy-Railway-7B2FBE?logo=railway)
+![License](https://img.shields.io/github/license/TrendpilotAI/openclaw-n8n-railway)
+![Stars](https://img.shields.io/github/stars/TrendpilotAI/openclaw-n8n-railway)
+![Last Commit](https://img.shields.io/github/last-commit/TrendpilotAI/openclaw-n8n-railway)
+
+
 ## What This Deploys
 
-One click deploys the full stack. All companion services are pre-wired with Railway reference variables — no manual secret sharing or internal URLs to configure.
+One click deploys the full stack. All companion services are pre-wired with Railway reference variables — no manual secret sharing or internal URLs to configure.  is buried in the About section. 
+
+Bare OpenClaw	This Template
+n8n workflow automation	✗	✓
+Tailscale mesh access	✗	✓
+Modal GPU compute	✗	✓
+500+ SaaS integrations	✗	✓
+LLM cost optimization	Manual	Auto (90%+ savings)
+Setup	CLI	Browser wizard
+
 
 ### Core (always deployed)
 
@@ -34,6 +52,8 @@ One click deploys the full stack. All companion services are pre-wired with Rail
 - Browser-based setup wizard at `/setup` for onboarding
 
 ## Prerequisites
+
+You need: Railway account (2 min), Tailscale auth key (3 min), one API key (already have). Total setup: under 10 minutes.
 
 1. **Railway account** — [railway.app](https://railway.app)
 2. **Tailscale account** — [tailscale.com](https://tailscale.com) (free for personal use)
