@@ -39,6 +39,8 @@ export const startAgentTask = mutation({
     agentId: v.optional(v.string()),
     models: v.optional(v.array(v.string())),
     maxRetries: v.optional(v.number()),
+    gatewayUrl: v.string(),
+    gatewayToken: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
@@ -51,6 +53,8 @@ export const startAgentTask = mutation({
         agentId: args.agentId,
         models: args.models,
         maxRetries: args.maxRetries,
+        gatewayUrl: args.gatewayUrl,
+        gatewayToken: args.gatewayToken,
       },
     );
     return workflowId;
@@ -91,6 +95,8 @@ export const startSubAgentOrchestration = mutation({
         models: v.optional(v.array(v.string())),
       }),
     ),
+    gatewayUrl: v.string(),
+    gatewayToken: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
@@ -101,6 +107,8 @@ export const startSubAgentOrchestration = mutation({
       {
         parentAgentId: args.parentAgentId,
         tasks: args.tasks,
+        gatewayUrl: args.gatewayUrl,
+        gatewayToken: args.gatewayToken,
       },
     );
     return workflowId;

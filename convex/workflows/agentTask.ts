@@ -24,6 +24,10 @@ export const agentTaskWorkflow = workflow.define({
     // Model fallback chain — first entry is primary, rest are fallbacks.
     models: v.optional(v.array(v.string())),
     maxRetries: v.optional(v.number()),
+    // Public gateway URL (e.g. https://openclaw-gw.example.com).
+    gatewayUrl: v.string(),
+    // Bearer token for gateway auth.
+    gatewayToken: v.optional(v.string()),
   },
   returns: v.object({
     status: v.string(),
@@ -49,6 +53,8 @@ export const agentTaskWorkflow = workflow.define({
         agentId: args.agentId ?? "default",
         models: args.models ?? [],
         maxRetries: args.maxRetries ?? 2,
+        gatewayUrl: args.gatewayUrl,
+        gatewayToken: args.gatewayToken ?? "",
       },
     );
 
@@ -98,34 +104,68 @@ export const executeLlmCall = internalAction({
     agentId: v.string(),
     models: v.array(v.string()),
     maxRetries: v.number(),
+    gatewayUrl: v.string(),
+    gatewayToken: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    // This action runs outside the database transaction and can call external
-    // APIs. In production this will call the OpenClaw gateway's internal API
-    // to execute the actual LLM task. For now it's a placeholder that the
-    // server.js integration will drive via the gateway proxy.
-    //
-    // The model fallback logic works like this:
-    //   1. Try models[0]
-    //   2. On failure, try models[1], etc.
-    //   3. If all fail, return error status.
+    if (!args.gatewayUrl) {
+      return {
+        status: "failed" as const,
+        output: "No gateway URL configured",
+        model: undefined,
+      };
+    }
 
     const models = args.models.length > 0 ? args.models : ["default"];
     let lastError = "";
 
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (args.gatewayToken) {
+      headers["Authorization"] = `Bearer ${args.gatewayToken}`;
+    }
+
+    const endpoint =
+      args.gatewayUrl.replace(/\/$/, "") + "/v1/chat/completions";
+
+    // Model fallback: try each model in sequence until one succeeds.
     for (const model of models) {
       try {
-        // TODO: Replace with actual OpenClaw gateway call once CONVEX_URL is
-        // wired and the gateway internal API is accessible from Convex actions.
-        // For now, return a success stub so the workflow pipeline is testable.
         console.log(
           `[agentTask] executing task="${args.taskDescription}" agent=${args.agentId} model=${model}`,
         );
 
+        const resp = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model,
+            messages: [
+              {
+                role: "system",
+                content: `You are agent "${args.agentId}". Complete the following task.`,
+              },
+              { role: "user", content: args.taskDescription },
+            ],
+          }),
+          signal: AbortSignal.timeout(120_000), // 2 min per attempt
+        });
+
+        if (!resp.ok) {
+          const body = await resp.text().catch(() => "");
+          throw new Error(`HTTP ${resp.status}: ${body.slice(0, 200)}`);
+        }
+
+        const data = await resp.json();
+        const content =
+          data.choices?.[0]?.message?.content ?? JSON.stringify(data);
+        const usedModel = data.model ?? model;
+
         return {
           status: "completed" as const,
-          output: `Task "${args.taskDescription}" executed successfully with model ${model}`,
-          model,
+          output: content,
+          model: usedModel,
         };
       } catch (err) {
         lastError = String(err);

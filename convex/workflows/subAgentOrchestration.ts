@@ -25,6 +25,10 @@ export const subAgentOrchestrationWorkflow = workflow.define({
         models: v.optional(v.array(v.string())),
       }),
     ),
+    // Public gateway URL (e.g. https://openclaw-gw.example.com).
+    gatewayUrl: v.string(),
+    // Bearer token for gateway auth.
+    gatewayToken: v.optional(v.string()),
   },
   returns: v.object({
     totalTasks: v.number(),
@@ -62,6 +66,8 @@ export const subAgentOrchestrationWorkflow = workflow.define({
             taskDescription: task.taskDescription,
             agentId: task.agentId,
             models: task.models ?? [],
+            gatewayUrl: args.gatewayUrl,
+            gatewayToken: args.gatewayToken ?? "",
           },
         ),
       ),
@@ -100,19 +106,75 @@ export const executeSubAgent = internalAction({
     taskDescription: v.string(),
     agentId: v.string(),
     models: v.array(v.string()),
+    gatewayUrl: v.string(),
+    gatewayToken: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    // TODO: Wire to OpenClaw gateway internal API for actual LLM execution.
-    // For now, stub that simulates sub-agent completion.
-    console.log(
-      `[subAgent] executing task="${args.taskDescription}" agent=${args.agentId}`,
-    );
+    if (!args.gatewayUrl) {
+      return {
+        agentId: args.agentId,
+        status: "failed" as const,
+        output: "No gateway URL configured",
+      };
+    }
 
-    return {
-      agentId: args.agentId,
-      status: "completed" as const,
-      output: `Sub-agent ${args.agentId} completed: ${args.taskDescription}`,
+    const model = args.models.length > 0 ? args.models[0] : "default";
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
     };
+    if (args.gatewayToken) {
+      headers["Authorization"] = `Bearer ${args.gatewayToken}`;
+    }
+
+    const endpoint =
+      args.gatewayUrl.replace(/\/$/, "") + "/v1/chat/completions";
+
+    try {
+      console.log(
+        `[subAgent] executing task="${args.taskDescription}" agent=${args.agentId} model=${model}`,
+      );
+
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "system",
+              content: `You are sub-agent "${args.agentId}". Complete the following task.`,
+            },
+            { role: "user", content: args.taskDescription },
+          ],
+        }),
+        signal: AbortSignal.timeout(120_000),
+      });
+
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => "");
+        throw new Error(`HTTP ${resp.status}: ${body.slice(0, 200)}`);
+      }
+
+      const data = await resp.json();
+      const content =
+        data.choices?.[0]?.message?.content ?? JSON.stringify(data);
+
+      return {
+        agentId: args.agentId,
+        status: "completed" as const,
+        output: content,
+      };
+    } catch (err) {
+      console.error(
+        `[subAgent] agent=${args.agentId} model=${model} failed: ${err}`,
+      );
+      return {
+        agentId: args.agentId,
+        status: "failed" as const,
+        output: `Sub-agent ${args.agentId} failed: ${String(err)}`,
+      };
+    }
   },
 });
 
