@@ -1948,6 +1948,12 @@ app.post("/setup/api/workflows/agent-task", requireSetupAuth, async (req, res) =
       return res.status(400).json({ ok: false, error: "Missing taskDescription" });
     }
 
+    // Resolve public gateway URL so Convex (running externally) can reach it.
+    const rawPublicUrl = process.env.OPENCLAW_PUBLIC_URL?.trim() || process.env.RAILWAY_PUBLIC_DOMAIN?.trim() || "";
+    const publicGatewayUrl = rawPublicUrl
+      ? (rawPublicUrl.startsWith("http") ? rawPublicUrl : `https://${rawPublicUrl}`)
+      : "";
+
     // ConvexHttpClient requires the function reference as a string path.
     const workflowId = await client.mutation("openclawApi:startAgentTask", {
       secret: CONVEX_SECRET,
@@ -1955,6 +1961,8 @@ app.post("/setup/api/workflows/agent-task", requireSetupAuth, async (req, res) =
       agentId: agentId || undefined,
       models: Array.isArray(models) ? models : undefined,
       maxRetries: maxRetries != null ? Number(maxRetries) : undefined,
+      gatewayUrl: publicGatewayUrl,
+      gatewayToken: OPENCLAW_GATEWAY_TOKEN || undefined,
     });
 
     trackEvent("workflow_started", { type: "agentTask", workflowId });
@@ -2007,10 +2015,18 @@ app.post("/setup/api/workflows/sub-agents", requireSetupAuth, async (req, res) =
       return res.status(400).json({ ok: false, error: "Missing parentAgentId or tasks array" });
     }
 
+    // Resolve public gateway URL so Convex (running externally) can reach it.
+    const rawPublicUrl = process.env.OPENCLAW_PUBLIC_URL?.trim() || process.env.RAILWAY_PUBLIC_DOMAIN?.trim() || "";
+    const publicGatewayUrl = rawPublicUrl
+      ? (rawPublicUrl.startsWith("http") ? rawPublicUrl : `https://${rawPublicUrl}`)
+      : "";
+
     const workflowId = await client.mutation("openclawApi:startSubAgentOrchestration", {
       secret: CONVEX_SECRET,
       parentAgentId,
       tasks,
+      gatewayUrl: publicGatewayUrl,
+      gatewayToken: OPENCLAW_GATEWAY_TOKEN || undefined,
     });
 
     trackEvent("workflow_started", { type: "subAgentOrchestration", workflowId });
