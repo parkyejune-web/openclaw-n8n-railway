@@ -22,6 +22,21 @@ if [ -n "$TAILSCALE_AUTHKEY" ]; then
     --accept-routes
   echo "[tailscale] Connected to tailnet"
 
+  # Validate Tailscale registration
+  TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
+  TS_STATUS=$(tailscale status --json 2>/dev/null | head -c 500 || echo "{}")
+  if [ -n "$TS_IP" ]; then
+    echo "[tailscale] Registered: ${TAILSCALE_HOSTNAME:-openclaw-railway} @ $TS_IP"
+  else
+    echo "[tailscale] WARNING: No IPv4 address assigned — check auth key validity"
+  fi
+
+  # Validate Railway TCP proxy alignment
+  if [ -n "$RAILWAY_PUBLIC_DOMAIN" ]; then
+    echo "[tailscale] Railway public domain: $RAILWAY_PUBLIC_DOMAIN"
+    echo "[tailscale] Tailscale hostname: ${TAILSCALE_HOSTNAME:-openclaw-railway}"
+  fi
+
   # Enable Tailscale Serve in the background once the gateway is up
   if [ "$TAILSCALE_SERVE" = "true" ]; then
     (
@@ -30,7 +45,7 @@ if [ -n "$TAILSCALE_AUTHKEY" ]; then
         if curl -sf http://127.0.0.1:18789/health > /dev/null 2>&1; then
           sleep 2
           tailscale serve --bg --https=443 http://127.0.0.1:18789 2>&1 && \
-            echo "[tailscale] Serve enabled on tailnet" || \
+            echo "[tailscale] Serve enabled on tailnet (https://$(tailscale status --json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin).get("Self",{}).get("DNSName","unknown"))' 2>/dev/null || echo 'unknown'))" || \
             echo "[tailscale] Serve setup failed (check ACLs)"
           break
         fi
