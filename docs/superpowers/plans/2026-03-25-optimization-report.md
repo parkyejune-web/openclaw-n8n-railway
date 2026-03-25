@@ -204,15 +204,39 @@ Then update cron model configs to call this action instead of spawning sub-agent
 | Windows media path hardening | 3.22 | N/A for Railway |
 | SIGTERM shutdown hardening | 3.22 | Better container lifecycle |
 
-**Upgrade blockers:**
-- v2026.3.22 build fails (ESM loader error in `pnpm build`)
-- v2026.3.12 build fails (tlon extension dependency)
-- The `--stable` update script downloads, builds, and replaces — but builds are broken
+**v2026.3.23 is now available** (tagged `v2026.3.23`) with critical fixes:
+- OpenRouter auto pricing infinite recursion fix (we use OpenRouter)
+- Auth token snap-back bug fix (expired OpenAI tokens reverting)
+- MiniMax failover: `api_error` no longer misclassifies billing/auth errors
+- Memory-core independent registration (prevents coupled tool failures)
+- Gateway lock conflict crash-loop fix (launchd/systemd)
+- CSP hardening for Control UI
+
+**Breaking changes to handle on upgrade:**
+- `CLAWDBOT_*` and `MOLTBOT_*` env names removed → ensure all use `OPENCLAW_*`
+- Plugin SDK changed: `openclaw/extension-api` → `openclaw/plugin-sdk/*`
+- `nano-banana-pro` skill removed → use `agents.defaults.imageGenerationModel.primary`
+- Agent default timeout raised from 600s to **48 hours** (favorable)
+- MiniMax default updated M2.5 → M2.7
 
 **Recommendation:**
-1. Monitor for v2026.3.23+ which should fix the build regression
-2. When available: `openclaw.update --stable` via setup console
-3. After upgrade, `gateway.trustedProxies` and `controlUi.allowedOrigins` will persist through restarts
+1. Try `openclaw.update v2026.3.23` (may fix the build issue from .22)
+2. Run `openclaw doctor --fix` after upgrade for cron migration + config repair
+3. After upgrade, `gateway.trustedProxies` and `controlUi.allowedOrigins` will persist
+
+### 5.2 Dual Workflow System Architecture
+
+**Important discovery:** Two distinct workflow systems coexist:
+1. **Convex Workflows** (`@convex-dev/workflow`) — heartbeat, agentTask, subAgentOrchestration. Runs inside Convex runtime with durable replay.
+2. **Temporal** (external) — cronServiceHealthWorkflow, cronJudgeSwarmWorkflow, etc. Runs via temporal-worker service, state synced to Convex `temporalWorkflows` table.
+
+These are NOT competing — they serve different purposes:
+- **Convex Workflows** = best for LLM tasks (close to Convex data, reactive subscriptions)
+- **Temporal** = best for multi-step orchestration with human-in-the-loop signals, long timeouts, and cross-service coordination
+
+**Recommendation:** Don't consolidate. Use both:
+- Convex Workflows for LLM-heavy tasks (agent tasks, heartbeats)
+- Temporal for orchestration workflows (judge swarms, scoring pipelines, approval flows)
 
 ---
 
