@@ -61,12 +61,20 @@ COPY --from=openclaw-build /openclaw /openclaw
 RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"' > /usr/local/bin/openclaw \
   && chmod +x /usr/local/bin/openclaw
 
-# Update npm, install CLI tools: yt-dlp (YouTube transcripts),
-# Composio Rube MCP server (500+ SaaS integrations), Modal (serverless GPU)
-RUN npm install -g npm@11 @composio/rube-mcp \
-  && curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
-  && chmod +x /usr/local/bin/yt-dlp \
-  && pip3 install --break-system-packages modal
+# Update npm
+RUN npm install -g npm@11
+
+# Composio Rube MCP server (500+ SaaS integrations) — real package is @composio/rube (binary: rube);
+# @composio/rube-mcp is a 0.0.1 placeholder. --ignore-scripts skips interactive postinstall that fails in docker build.
+RUN npm install -g --ignore-scripts @composio/rube
+
+# yt-dlp (YouTube transcripts) — standalone Linux glibc x86_64 binary (PyInstaller, no python dep).
+RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
+    -o /usr/local/bin/yt-dlp \
+  && chmod +x /usr/local/bin/yt-dlp
+
+# Modal (serverless GPU)
+RUN pip3 install --break-system-packages --no-cache-dir modal
 
 # Clone /last30days research skill
 RUN git clone --depth 1 https://github.com/mvanhorn/last30days-skill.git /root/.claude/skills/last30days
