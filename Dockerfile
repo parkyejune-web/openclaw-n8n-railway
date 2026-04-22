@@ -61,9 +61,6 @@ COPY --from=openclaw-build /openclaw /openclaw
 RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"' > /usr/local/bin/openclaw \
   && chmod +x /usr/local/bin/openclaw
 
-# Update npm
-RUN npm install -g npm@11
-
 # Composio Rube MCP server (500+ SaaS integrations) — real package is @composio/rube (binary: rube);
 # @composio/rube-mcp is a 0.0.1 placeholder. --ignore-scripts skips interactive postinstall that fails in docker build.
 RUN npm install -g --ignore-scripts @composio/rube
