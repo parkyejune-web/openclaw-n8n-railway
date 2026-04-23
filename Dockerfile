@@ -62,7 +62,6 @@ RUN printf '%s\n' '#!/usr/bin/env bash' 'exec node /openclaw/dist/entry.js "$@"'
   && chmod +x /usr/local/bin/openclaw
 
 # Composio Rube MCP server (500+ SaaS integrations). --ignore-scripts skips interactive postinstall that fails in docker build.
-RUN npm install -g --ignore-scripts @composio/rube-mcp
 
 # yt-dlp (YouTube transcripts) — standalone Linux glibc x86_64 binary (PyInstaller, no python dep).
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
